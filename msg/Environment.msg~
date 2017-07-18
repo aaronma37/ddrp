@@ -1,0 +1,5 @@
+string frame_id
+
+dynamic_domain_reduction_planning/Objective[] objectives
+dynamic_domain_reduction_planning/RegionObjectiveState[] region_objective_states
+

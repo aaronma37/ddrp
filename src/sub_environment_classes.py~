@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+
+
+from random import randint
+import random
+import numpy as np
+import math
+import string_operations
+import complete_environment_classes
+from ddrp.msgs import Region
+
+
+
+def get_feasible_partial_sub_environment(par_sub_env,exp_comp_env):
+    #PULL FROM PARTICULAR ENV SCHEME. DEFAULT
+    par_sub_env_set = set()
+    for i in range(-1,2):
+        for j in range(-1,2):
+            new_sub_env=Sub_Environment(par_sub_env,exp_comp_env,(i,j))
+            par_sub_env_set.add(new_sub_env)
+    return par_sub_env_set
+
+
+class Sub_Environment:
+    def __init__(self,seed_partial_sub_env,complete_environment_msg,new_reg_coord):
+        self.state="default"
+        reg=Region()
+        if seed_partial_sub_env is not None:
+            reg.x=seed_partial_sub_env.region_list[-1].x+new_reg_coord[0]
+            reg.y=seed_partial_sub_env.region_list[-1].y+new_reg_coord[1]
+            self.region_list=seed_partial_sub_env.region_list
+            self.region_list.append(reg)
+        else:
+            reg.x=int(new_reg_coord[0])
+            reg.y=int(new_reg_coord[1])
+            self.region_list=[]
+            self.region_list.append(reg)
+        self.update_state(complete_environment_msg)
+
+    def update_state(self,complete_environment_msg):
+        self.state="s["
+        for r in self.region_list:
+            self.state=self.state+string_operations.get_state_string_for_region(complete_environment_msg,r)
+        self.state=self.state+"]s"
+        self.update_region_list_correlation()
+			
+    def update_region_list_correlation(self):
+        region_list_correlation='c['		
+        for i in range(len(self.region_list)):
+            if i==0:
+                region_list_correlation=region_list_correlation+'-'+'r'
+            else:
+                signal='-'
+                for j in xrange(i-1,-1,-1):
+                    if self.region_list[i]==self.region_list[j]:
+                        signal=str(j)
+                region_list_correlation=region_list_correlation+signal+'r'
+        self.state=self.state+region_list_correlation+"]c"
+
+		

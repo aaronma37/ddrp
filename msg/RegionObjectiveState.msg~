@@ -1,0 +1,3 @@
+dynamic_domain_reduction_planning/Region region
+string objective_name
+int8 state
