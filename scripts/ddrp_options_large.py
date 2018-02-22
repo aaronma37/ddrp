@@ -39,7 +39,9 @@ class Region():
 class ddrpOptionsEnv():
     def __init__(self):
         self.summary=''
-        self.size=100
+        self.size=200
+        self.objectives_num=int(self.size**2/100.)
+        #print "|o|: ", self.objectives_num
         self.region={}
         self.region_size=10
         self.objectives_size=1
@@ -179,7 +181,7 @@ class ddrpOptionsEnv():
             for j in range(int(self.size/self.region_size)):
                 self.region[(i,j)]=Region()
 
-        for i in range(100):
+        for i in range(self.objectives_num):
             o=randInt(0,self.size**2-1)
             self.region[self._getRegionfromGlobal(o)].objectives[0].append(self._getGlobal(o))
 

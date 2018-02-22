@@ -14,8 +14,17 @@ class DDRP:
         self.discount=.98
         self.max_sub_env_length=10
         self.current_environment=environment.getCopy()
+        self.completed_node_tree=utils.node(None,self.current_environment.region_position)
+        self.completed_node_tree.explore(self.current_environment)
         self.full_sub_envs={}
         self.temp_env=None
+
+    def import_values(self,values):
+        if values is None:
+            print "Empty import"
+            return
+        print "Importing data"
+        self.values=values
 
     def set_environment(self,env):
         self.current_environment=env.getCopy()
@@ -38,15 +47,23 @@ class DDRP:
         utils.task_value_update(self.values,s,t,reward)
         return reward,macro_task
 
-    def _sub_environment_search(self,partial_sub_env):
+    def _sub_environment_search(self,partial_sub_env,completion_node):
         if len(partial_sub_env)>=self.max_sub_env_length:
+            completion_node.check_and_complete_node()
             return partial_sub_env
-        r = utils.get_candidate_region(self.values,self.temp_env,partial_sub_env)
-        return self._sub_environment_search(partial_sub_env+(r,))
+        r = utils.get_candidate_region(self.values,self.temp_env,partial_sub_env,True,completion_node)
+        if r is None:
+            print "Searched entire tree, size: ", self.completed_node_tree.getSize(),self.completed_node_tree.printValues()
+            self.completed_node_tree=utils.node(None,self.current_environment.region_position)
+            self.completed_node_tree.explore(self.current_environment)
+            return self._sub_environment_search((),self.completed_node_tree)
+
+        next_node=completion_node.get_next_and_explore(r,self.temp_env)
+        return self._sub_environment_search(partial_sub_env+(r,),next_node)
 
     def step(self):
         self._reset_temp_env()
-        sub_env = self._sub_environment_search(())
+        sub_env = self._sub_environment_search((),self.completed_node_tree)
         s=utils.get_sub_env_state(self.temp_env.region_position,self.temp_env,sub_env)
         step_reward,macro_task = self._task_search(sub_env,())
         utils.update_full_sub_envs(self.full_sub_envs,sub_env,step_reward,macro_task)
@@ -56,9 +73,12 @@ class DDRP:
         self._reset_temp_env()
         episode_reward=0
         sub_env,val,mt=utils.get_best_full_sub_envs(self.full_sub_envs)
-        for r in sub_env:
-            obs,r,done,info=self.temp_env.step_ddrp(r)
-            episode_reward+=r
+        try:
+            for r in sub_env:
+                obs,r,done,info=self.temp_env.step_ddrp(r)
+                episode_reward+=r
+        except TypeError:
+            return 0.
         # print episode_reward
         # print info
         # print sub_env,', s: ', utils.get_sub_env_state(self.temp_env.region_position,self.temp_env,sub_env) , ', r: ', episode_reward

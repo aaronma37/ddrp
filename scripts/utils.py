@@ -1,6 +1,74 @@
 #!/usr/bin/env python
 import math
-C=1.95
+from random import randint
+MAX_SEARCH_LEN=2
+C1=1.95
+C2=1.95
+
+
+
+class node():
+    def __init__(self,parent,val):
+        self.val=val
+        self.parent=parent
+        self.nextDict=None
+        self.completed=False
+        self.explored=False
+
+    def explore(self,e):
+        self.explored=True
+        self.nextDict={}
+        for sr in get_available_regions(self.val,e):
+            newNode=node(self,sr)
+            self.nextDict[sr]=newNode
+
+    def get_next_and_explore(self,r,e):
+        if self.nextDict.get(r) is None:
+            print "ERROR",r
+        if self.nextDict[r].explored is True:
+            return self.nextDict[r]
+        self.nextDict[r].explore(e)
+        return self.nextDict[r]
+
+    def check_parent_node_completion(self):
+        for k,v in self.nextDict.items():
+            if v.completed is False:
+                return
+        self.completed=True
+        if self.parent is None:
+            return
+        self.parent.check_parent_node_completion()
+
+
+    def check_and_complete_node(self):
+        self.completed=True
+        self.nextDict={}
+        if self.parent is None:
+            return
+        self.parent.check_parent_node_completion()
+
+    def printValues(self):
+        print self.val,self.completed
+        if self.nextDict is None:
+            return
+        for k,v in self.nextDict.items():
+            v.printValues()
+
+    def getSize(self):
+        val=1
+        if self.nextDict is None:
+            return 0
+        for k,v in self.nextDict.items():
+            val+=v.getSize()
+        return val
+
+def get_available_regions(init_r,e):
+    r_list=[]
+    for r in e.region:
+        if _dist(init_r,r) <= MAX_SEARCH_LEN:
+            r_list.append(r)
+    return r_list
+
 def _check_init(values,s,t):
     if values['N'].get(s) == None:
         values['N'][s]=0.
@@ -20,7 +88,7 @@ def _step_v(v,s,t):
     v['Na'][s][t]+=1
 
 def _ucb(r,n,na):
-    return r+C*math.sqrt(math.log(n+1)/(na+1))
+    return r+C1*math.sqrt(math.log(n+1)/(na+1))
 
 def get_candidate_task(v,objective_size,s,explore=True):
     _max_val=None
@@ -71,7 +139,7 @@ def update_full_sub_envs(env_dict,sub_env,r,mt):
     if env_dict.get(sub_env) is None:
         env_dict[sub_env]=(r,mt)
         return
-    if env_dict[sub_env][0] > r:
+    if env_dict[sub_env][0] < r:#BIG TYPO?
         env_dict[sub_env]=(r,mt)
 
 def _init_env_values(v,s):
@@ -99,17 +167,31 @@ def get_var(v,s):
         return 0
     return v['M2'][s]/(v['Ne'][s]-1)
 
-def get_candidate_region(v,env,sub_env,explore=True):
+def get_candidate_region(v,env,sub_env,explore,completion_node):
     _max_val=None
     _region=None
-    for r in env.region:
+    # print completion_node
+    for r,node in completion_node.nextDict.items():
+        if node.completed is True:
+            continue
+        if len(sub_env)>0:
+            if _dist(sub_env[-1],r)>MAX_SEARCH_LEN:
+                print sub_env[-1],r
+                print "THIS SHOULD NEVER HAPPEN"
+                continue
+        elif _dist(env.region_position,r)>MAX_SEARCH_LEN:
+            print "THIS ALSO SHOULDNT HAPPEN"
+            continue
         s=get_sub_env_state(env.region_position,env,sub_env+(r,))
         _init_env_values(v,s)
         if explore is True:
             # print sub_env,s,v['Ne'][s],"HERE"
             if v['Ne'][s]==0:
                 return r
-            val=v['Qe'][s]+C*get_var(v,s)/math.sqrt(1+v['Ne'][s])
+            if randint(0,100)>5:
+                val=v['Qe'][s]+C2*get_var(v,s)/math.sqrt(1+v['Ne'][s])
+            else:
+                val=randint(0,100)
             #print get_var(v,s),'2'
         else:
             val=v['Qe'][s]
