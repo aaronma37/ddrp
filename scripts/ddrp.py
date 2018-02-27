@@ -18,6 +18,7 @@ class DDRP:
         self.completed_node_tree.explore(self.current_environment)
         self.full_sub_envs={}
         self.temp_env=None
+        self.num_iterations=0.
 
     def import_values(self,values):
         if values is None:
@@ -51,7 +52,7 @@ class DDRP:
         if len(partial_sub_env)>=self.max_sub_env_length:
             completion_node.check_and_complete_node()
             return partial_sub_env
-        r = utils.get_candidate_region(self.values,self.temp_env,partial_sub_env,True,completion_node)
+        r = utils.get_candidate_region(self.values,self.temp_env,partial_sub_env,True,completion_node,self.num_iterations)
         if r is None:
             print "Searched entire tree, size: ", self.completed_node_tree.getSize(),self.completed_node_tree.printValues()
             self.completed_node_tree=utils.node(None,self.current_environment.region_position)
@@ -68,6 +69,7 @@ class DDRP:
         step_reward,macro_task = self._task_search(sub_env,())
         utils.update_full_sub_envs(self.full_sub_envs,sub_env,step_reward,macro_task)
         utils.sub_env_value_update(self.values,s,step_reward)
+        self.num_iterations+=1.
 
     def evaluate(self):
         self._reset_temp_env()

@@ -121,13 +121,21 @@ def get_sub_env_state(init_loc,env,sub_env):
     environment_state=env.getObs()#[x][y][obj]
     num_obj=env.objectives_size
     sub_env_state=()
+    temp_r_list=[]
     for r in sub_env:
         r_state=()
         for o in range(num_obj):
             r_state=r_state+(environment_state[r[0]][r[1]][o],)
         regional_state=(r_state,_dist(init_loc,r))
-        sub_env_state=sub_env_state + (regional_state,)
+        repeated=0
+        for i in range(len(temp_r_list)):
+            if r==temp_r_list[i]:
+                repeated=i
+                break
+        #sub_env_state=sub_env_state + (regional_state,)
+        sub_env_state=sub_env_state + (regional_state,)+(repeated,)
         init_loc=r
+        temp_r_list.append(r)
     return sub_env_state
 
 def printV(v):
@@ -167,7 +175,7 @@ def get_var(v,s):
         return 0
     return v['M2'][s]/(v['Ne'][s]-1)
 
-def get_candidate_region(v,env,sub_env,explore,completion_node):
+def get_candidate_region(v,env,sub_env,explore,completion_node,num_step):
     _max_val=None
     _region=None
     # print completion_node
@@ -188,7 +196,7 @@ def get_candidate_region(v,env,sub_env,explore,completion_node):
             # print sub_env,s,v['Ne'][s],"HERE"
             if v['Ne'][s]==0:
                 return r
-            if randint(0,100)>5:
+            if randint(0,100)>5*(1-1/math.exp(num_step/100.)):
                 val=v['Qe'][s]+C2*get_var(v,s)/math.sqrt(1+v['Ne'][s])
             else:
                 val=randint(0,100)

@@ -40,6 +40,7 @@ class ddrpOptionsEnv():
     def __init__(self):
         self.summary=''
         self.size=100
+        self.possible_actions=None
         self.region={}
         self.region_size=10
         self.objectives_size=1
@@ -168,6 +169,9 @@ class ddrpOptionsEnv():
 
         copy.steps=0
         copy.r_sum=0
+        copy.possible_actions=[]
+        for r,v in copy.region.items():
+            copy.possible_actions.append(r)
         return copy
 
     def _reset(self):
@@ -198,6 +202,10 @@ class ddrpOptionsEnv():
 
         self.steps=0
         self.r_sum=0
+        self.possible_actions=[]
+        for r,v in self.region.items():
+            self.possible_actions.append(r)
+
         return self.state
 
     def getObs(self):

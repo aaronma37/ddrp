@@ -3,13 +3,14 @@ import os, logging, gym
 import ddrp_options
 import numpy as np
 from ddrp import DDRP
+from mcts import MCTS 
 import matplotlib.pyplot as plt
 import time
 import sys
+import pickle
 import cPickle
 
-def train(env_id, num_timesteps, seed, num_cpu,IMPORT_OPTION,ITER_OPTION):
-
+def train(env_id,filename,model, num_timesteps, seed, num_cpu,IMPORT_OPTION,ITER_OPTION):
 
     results=[]
     avg=[]
@@ -21,14 +22,22 @@ def train(env_id, num_timesteps, seed, num_cpu,IMPORT_OPTION,ITER_OPTION):
     think_times=[.01,.2,.4,.6,.8,1,1.5,2,2.5,3,3.5,4,4.5,5]
     think_times=[.001,.01,.02,.03,.04,.1,.2,.3,.4,.5]
     think_times=[.001,.01,.02,.03,.04,.1,.2,.3,.4,.5]
+    think_times=[.0001,.000699,.001,.00699,.01,.0699,.1,.699]
+    think_times=[10**(-4),10**(-3.5),10**(-3),10**(-2.5),10**(-2),10**(-1.5),10**(-1),10**(-.5),10**(0),10**(.5)]
+    #think_times=[10**(1),10**(1.5)]
+    #think_times=[10**(2),10**(2.5)]
     #think_times=[x / 10.0 for x in range(1, 30, 5)]
 
     for think_steps in reversed(think_times):
         results.append([])
-        for trial in range(15):
+        for trial in range(100):
             env=ddrp_options.ddrpOptionsEnv()
             env._reset()
-            ddrp=DDRP(env)
+            if model == "ddrp":
+                ddrp=DDRP(env)
+            elif model == "mcts":
+                ddrp=MCTS(env)
+
             if IMPORT_OPTION is True:
                 ddrp.import_values(values)
             if ITER_OPTION=="time":
@@ -50,8 +59,10 @@ def train(env_id, num_timesteps, seed, num_cpu,IMPORT_OPTION,ITER_OPTION):
         t.append(think_steps)
         print 'think time: ', think_steps, ' avg: ',sum(results[-1])/len(results[-1]), 'var: ', var[-1], 'results: ', results[-1]
 
-
-    return t,avg,var
+    with open(filename,'wb') as fp:
+        pickle.dump(t,fp)
+        pickle.dump(avg,fp)
+        pickle.dump(var,fp)
 
 def main():
     import argparse
@@ -63,16 +74,11 @@ def main():
 
     plt.figure()
 
-    t,avg,var=train(args.env, num_timesteps=args.num_timesteps, seed=args.seed, num_cpu=14,IMPORT_OPTION=False,ITER_OPTION="steps")
+    # train(args.env,"DDRP", num_timesteps=args.num_timesteps, seed=args.seed, num_cpu=14,IMPORT_OPTION=False,ITER_OPTION="steps")
 
-    t2,avg2,var2=train(args.env, num_timesteps=args.num_timesteps, seed=args.seed, num_cpu=14,IMPORT_OPTION=True,ITER_OPTION="steps")
-    plt.xscale('symlog')
-    plt.errorbar(t,avg, yerr=var, fmt='-o')
-    plt.errorbar(t2,avg2, yerr=var2, fmt='-x')
-    plt.ylabel('Episode reward')
-    plt.xlabel('Think time (s)')
-    plt.title('DDRP on 2D env')
-    plt.show()
+    train(args.env,"DDRP","ddrp", num_timesteps=args.num_timesteps, seed=args.seed, num_cpu=14,IMPORT_OPTION=False,ITER_OPTION="time")
+    # t2,avg2,var2=train(args.env, num_timesteps=args.num_timesteps, seed=args.seed, num_cpu=14,IMPORT_OPTION=True,ITER_OPTION="steps")
+
 
 
 
