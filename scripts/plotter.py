@@ -14,7 +14,6 @@ class PerformanceData():
     def _parse(self,filename):
         f = open(filename, 'r')
         t=pickle.load(f)
-        #t = [x * 10 for x in t] 
         avg=pickle.load(f)
         var=pickle.load(f)
         return t,avg,var
@@ -26,6 +25,8 @@ def main():
     data_list.append(PerformanceData("DDRP-OO","DDRP-OO",'-D'))
     #data_list.append(PerformanceData("DDRP-OO2","DDRP-OO2"))
     data_list.append(PerformanceData("MCTS","MCTS",'-s'))
+    data_list.append(PerformanceData("TEST","TEST",'-3'))
+    data_list.append(PerformanceData("TEST2","TEST2",'-3'))
     #data_list.append(PerformanceData("MCTS2","MCTS2",'-s'))
     #data_list.append(PerformanceData("DDRPTest","DDRPTest",'-s'))
     # ddrp=PerformanceData("ddrp",'DDRP')

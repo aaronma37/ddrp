@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sets
 import utils
+import pickle
 
 class DDRP:
     def __init__(self,environment):
@@ -19,6 +20,7 @@ class DDRP:
         self.full_sub_envs={}
         self.temp_env=None
         self.num_iterations=0.
+        self.max_reward=0
 
     def import_values(self,values):
         if values is None:
@@ -38,8 +40,8 @@ class DDRP:
         if len(sub_env)==0:
             return 0,macro_task
         s=utils.get_sub_env_state(self.temp_env.region_position,self.temp_env,sub_env)
-        t=utils.get_candidate_task(self.values,self.temp_env.objectives_size,s)
-        macro_task=macro_task+(t,)
+        t=utils.get_candidate_task(self.values,self.temp_env.objectives,s)
+        macro_task.append((sub_env[0][0],sub_env[0][1],t))
         o,r,done,info=self.temp_env.step_ddrp((sub_env[0][0],sub_env[0][1],t))
         reward = self.discount**self.temp_env.steps*r
         r,m=self._task_search(sub_env[1:],macro_task)
@@ -66,7 +68,9 @@ class DDRP:
         self._reset_temp_env()
         sub_env = self._sub_environment_search((),self.completed_node_tree)
         s=utils.get_sub_env_state(self.temp_env.region_position,self.temp_env,sub_env)
-        step_reward,macro_task = self._task_search(sub_env,())
+        step_reward,macro_task = self._task_search(sub_env,[])
+        if step_reward > self.max_reward:
+            self.max_reward=step_reward
         utils.update_full_sub_envs(self.full_sub_envs,sub_env,step_reward,macro_task)
         utils.sub_env_value_update(self.values,s,step_reward)
         self.num_iterations+=1.
@@ -76,8 +80,8 @@ class DDRP:
         episode_reward=0
         sub_env,val,mt=utils.get_best_full_sub_envs(self.full_sub_envs)
         try:
-            for r in sub_env:
-                obs,r,done,info=self.temp_env.step_ddrp(r)
+            for t in mt:
+                obs,r,done,info=self.temp_env.step_ddrp(t)
                 episode_reward+=r
         except TypeError:
             return 0.
@@ -85,3 +89,10 @@ class DDRP:
         # print info
         # print sub_env,', s: ', utils.get_sub_env_state(self.temp_env.region_position,self.temp_env,sub_env) , ', r: ', episode_reward
         return episode_reward 
+
+    def save(self):
+        utils.save_data('saved_values',self.values)
+
+    def load(self):
+        with open('saved_values','r') as fp:
+            self.values=pickle.load(fp)

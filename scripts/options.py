@@ -10,13 +10,24 @@ import sys
 import pickle
 import cPickle
 
-def train(env_id,filename,model, num_timesteps, seed, num_cpu,IMPORT_OPTION,ITER_OPTION):
+NUM_OBJ=1
+NUM_ITER=10
+MODEL_NAME='train'
+MODEL_TYPE='ddrp-oo'
+ITER_OPTION='time'
+
+
+def train(env_id,num_iterations,num_obj,filename,model,iter_option):
 
     results=[]
     avg=[]
     var=[]
     t=[]
-    values=None
+    if MODEL_TYPE=='ddrp-oo':
+        print "loading data"
+        with open('saved_values') as fp:
+            values=pickle.load(fp)
+        print "finished loading"
 
     think_times=[.01,.05,.1,.5,1,5,10]
     think_times=[.01,.2,.4,.6,.8,1,1.5,2,2.5,3,3.5,4,4.5,5]
@@ -30,30 +41,37 @@ def train(env_id,filename,model, num_timesteps, seed, num_cpu,IMPORT_OPTION,ITER
 
     for think_steps in reversed(think_times):
         results.append([])
-        for trial in range(100):
-            env=ddrp_options.ddrpOptionsEnv()
+        for trial in range(num_iterations):
+            env=ddrp_options.ddrpOptionsEnv(num_obj)
             env._reset()
             if model == "ddrp":
                 ddrp=DDRP(env)
+            elif model == "ddrp-oo":
+                ddrp=DDRP(env)
+                ddrp.import_values(values)
             elif model == "mcts":
                 ddrp=MCTS(env)
-
-            if IMPORT_OPTION is True:
+            elif model == "train":
+                ddrp=DDRP(env)
                 ddrp.import_values(values)
-            if ITER_OPTION=="time":
+
+            if iter_option=="time":
                 start=time.time()
                 while time.time()-start < think_steps:
                     ddrp.step()
-            if ITER_OPTION=="steps":
+            elif iter_option=="steps":
                 steps=0
                 while steps < think_steps*1000:
                     ddrp.step()
                     steps+=1
             results[-1].append(ddrp.evaluate())
             #ddrp.completed_node_tree.printValues()
-            if IMPORT_OPTION is True:
+            #if model == "ddrp-oo":
+                #values=ddrp.values
+                #ddrp=None
+            if model == "train":
                 values=ddrp.values
-                ddrp=None
+
         avg.append(sum(results[-1])/len(results[-1]))
         var.append(np.var(results[-1]))
         t.append(think_steps)
@@ -63,6 +81,8 @@ def train(env_id,filename,model, num_timesteps, seed, num_cpu,IMPORT_OPTION,ITER
         pickle.dump(t,fp)
         pickle.dump(avg,fp)
         pickle.dump(var,fp)
+    if model == "train":
+        ddrp.save()
 
 def main():
     import argparse
@@ -72,13 +92,8 @@ def main():
     parser.add_argument('--num-timesteps', type=int, default=int(10e6))
     args = parser.parse_args()
 
-    plt.figure()
 
-    # train(args.env,"DDRP", num_timesteps=args.num_timesteps, seed=args.seed, num_cpu=14,IMPORT_OPTION=False,ITER_OPTION="steps")
-
-    train(args.env,"DDRP","ddrp", num_timesteps=args.num_timesteps, seed=args.seed, num_cpu=14,IMPORT_OPTION=False,ITER_OPTION="time")
-    # t2,avg2,var2=train(args.env, num_timesteps=args.num_timesteps, seed=args.seed, num_cpu=14,IMPORT_OPTION=True,ITER_OPTION="steps")
-
+    train(args.env,NUM_ITER,NUM_OBJ,MODEL_NAME,MODEL_TYPE,ITER_OPTION)
 
 
 

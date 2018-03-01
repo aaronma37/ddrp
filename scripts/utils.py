@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import math
+import pickle
 from random import randint
 MAX_SEARCH_LEN=2
 C1=1.95
@@ -90,10 +91,10 @@ def _step_v(v,s,t):
 def _ucb(r,n,na):
     return r+C1*math.sqrt(math.log(n+1)/(na+1))
 
-def get_candidate_task(v,objective_size,s,explore=True):
+def get_candidate_task(v,objectives,s,explore=True):
     _max_val=None
     _task=None
-    for t in range(objective_size):
+    for t,objective_wp in objectives.items():
         _check_init(v,s,t)
         if explore==True:
             val=_ucb(v['Q'][s][t],v['N'][s],v['Na'][s][t])
@@ -119,13 +120,13 @@ def _dist(r1,r2):
 
 def get_sub_env_state(init_loc,env,sub_env):
     environment_state=env.getObs()#[x][y][obj]
-    num_obj=env.objectives_size
+    num_obj=len(env.objectives)
     sub_env_state=()
     temp_r_list=[]
     for r in sub_env:
         r_state=()
-        for o in range(num_obj):
-            r_state=r_state+(environment_state[r[0]][r[1]][o],)
+        for k,v in env.objectives.items():
+            r_state=r_state+(environment_state[r[0]][r[1]][k],)
         regional_state=(r_state,_dist(init_loc,r))
         repeated=0
         for i in range(len(temp_r_list)):
@@ -226,5 +227,6 @@ def get_best_full_sub_envs(sub_env_dict):
             _max_a=a[1]
     return _max_key,_max_val,_max_a
 
-            
-
+def save_data(filename,v):
+    with open(filename,'wb') as fp:
+        pickle.dump(v,fp)
