@@ -41,7 +41,9 @@ def main():
     plt.xscale('log',basex=10)
     #plt.title('Online algorithm performance',fontsize=16)
     for d in data_list:
-        plt.errorbar(d.t,d.avg, yerr=d.var,label=d.name, fmt=d.marker,markersize=8,elinewidth=1)
+        upperlimits=d.var
+        lowerlimits=[0]*len(d.var)
+        plt.errorbar(d.t,d.avg, yerr=[upperlimits,lowerlimits],label=d.name, fmt=d.marker,markersize=8,elinewidth=1)
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,ncol=3, mode="expand", borderaxespad=0.,prop={'size':15},frameon=False)
     plt.show()
 
