@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os, logging, gym
 import ddrp_options
+import sub_test
 import numpy as np
 from ddrp import DDRP
 from mcts import MCTS 
@@ -12,17 +13,33 @@ import cPickle
 
 NUM_OBJ=1
 NUM_ITER=10
-MODEL_NAME='train'
-MODEL_TYPE='ddrp-oo'
+MODEL_NAME='testingsubmodularityratio2'
+MODEL_TYPE='ddrp'
+SUBMOD=True
 ITER_OPTION='time'
+ENV_TYPE='tiny'
 
+def progressBar(value, endvalue, bar_length=60):
+
+    percent = float(value) / endvalue
+    arrow = '-' * int(round(percent * bar_length)-1) + '>'
+    spaces = ' ' * (bar_length - len(arrow))
+
+    sys.stdout.write("\rPercent: [{0}] {1}%".format(arrow + spaces, int(round(percent * 100))))
+    sys.stdout.flush()
 
 def train(env_id,num_iterations,num_obj,filename,model,iter_option):
 
+    submodularity_solver=sub_test.Solver()
     results=[]
+    dr=[]
     avg=[]
     var=[]
     t=[]
+    lower_bounds=[]
+    upper_bounds=[]
+    greed=[]
+    eta=[]
     if MODEL_TYPE=='ddrp-oo':
         print "loading data"
         with open('saved_values') as fp:
@@ -38,21 +55,28 @@ def train(env_id,num_iterations,num_obj,filename,model,iter_option):
     #think_times=[10**(1),10**(1.5)]
     #think_times=[10**(2),10**(2.5)]
     #think_times=[x / 10.0 for x in range(1, 30, 5)]
+    if SUBMOD:
+        think_times=[10**(0)]
 
     for think_steps in reversed(think_times):
         results.append([])
+        dr.append([])
+        completion_progress=0
+        print "progress <"
         for trial in range(num_iterations):
-            env=ddrp_options.ddrpOptionsEnv(num_obj)
+            progressBar(trial,num_iterations)
+
+            env=ddrp_options.ddrpOptionsEnv(num_obj,ENV_TYPE)
             env._reset()
             if model == "ddrp":
-                ddrp=DDRP(env)
+                ddrp=DDRP(env,ENV_TYPE)
             elif model == "ddrp-oo":
-                ddrp=DDRP(env)
+                ddrp=DDRP(env,ENV_TYPE)
                 ddrp.import_values(values)
             elif model == "mcts":
                 ddrp=MCTS(env)
             elif model == "train":
-                ddrp=DDRP(env)
+                ddrp=DDRP(env,ENV_TYPE)
                 ddrp.import_values(values)
 
             if iter_option=="time":
@@ -64,7 +88,13 @@ def train(env_id,num_iterations,num_obj,filename,model,iter_option):
                 while steps < think_steps*1000:
                     ddrp.step()
                     steps+=1
-            results[-1].append(ddrp.evaluate())
+            if SUBMOD:
+                greed.append(ddrp.first_step())
+                #eta.append(1)
+                eta.append(submodularity_solver.test_once(env,.05,ddrp.max_sub_env_length,ddrp.discount))
+            r,v=ddrp.evaluate()
+            dr[-1].append(v)
+            results[-1].append(r)
             #ddrp.completed_node_tree.printValues()
             #if model == "ddrp-oo":
                 #values=ddrp.values
@@ -72,15 +102,31 @@ def train(env_id,num_iterations,num_obj,filename,model,iter_option):
             if model == "train":
                 values=ddrp.values
 
+        results[-1].sort()
+        performance=[]
+        for g in range(len(dr[-1])):
+            performance.append(greed[g]/dr[-1][g])
+
         avg.append(sum(results[-1])/len(results[-1]))
         var.append(np.var(results[-1]))
         t.append(think_steps)
-        print 'think time: ', think_steps, ' avg: ',sum(results[-1])/len(results[-1]), 'var: ', var[-1], 'results: ', results[-1]
+        lower_bounds.append(avg[-1]-results[-1][int(.1*num_iterations)])
+        upper_bounds.append(results[-1][int(.9*num_iterations)]-avg[-1])
+        print 'think time: ', think_steps, ' avg: ',sum(results[-1])/len(results[-1]), 'var: ', var[-1], 'results: ', dr[-1]
 
     with open(filename,'wb') as fp:
         pickle.dump(t,fp)
         pickle.dump(avg,fp)
         pickle.dump(var,fp)
+        pickle.dump(lower_bounds,fp)
+        pickle.dump(upper_bounds,fp)
+        print greed
+        print dr[-1]
+        print "performance", performance
+        print eta
+        pickle.dump(performance,fp)
+        pickle.dump(eta,fp)
+
     if model == "train":
         ddrp.save()
 

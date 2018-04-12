@@ -33,7 +33,7 @@ class MCTS:
         #change to full state
         s=mcts_utils.get_full_env_state(self.temp_env)
         t=mcts_utils.get_candidate_task(self.values,self.temp_env.possible_actions,s)
-        o,r,done,info=self.temp_env.step_ddrp((t[0],t[1],1))
+        o,r,done,info=self.temp_env.step_ddrp((t[0][0],t[0][1],t[1]))
         reward = self.discount**self.temp_env.steps*r
         non_discounted_reward = r
         r,ndr=self._search(s_num+1)

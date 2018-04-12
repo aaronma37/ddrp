@@ -2,6 +2,8 @@
 import math
 import pickle
 from random import randint
+from itertools import permutations
+from sets import Set
 MAX_SEARCH_LEN=2
 C1=1.95
 C2=1.95
@@ -176,6 +178,53 @@ def get_var(v,s):
         return 0
     return v['M2'][s]/(v['Ne'][s]-1)
 
+def sub_mod_search(v,env):
+    sub_env_set=Set()
+    r_list=[]
+    max_state=None
+    for r in env.region:
+        if _dist(env.region_position,r) <= 8:
+            r_list.append(r)
+    while len(sub_env_set)<4:
+        _max_val=0
+        _region=None
+        for r in r_list:
+            if r in sub_env_set:
+                continue
+            temp_r_set=Set()
+            temp_r_set.add(r)
+            for p in list(permutations(sub_env_set|temp_r_set)):
+                s=get_sub_env_state(env.region_position,env,p)
+                if v['Q'].get(s) is None:
+                    val=0
+                else:
+                    val=max(v['Q'][s].values())
+                if val>_max_val:
+                    if _region not in sub_env_set:
+                        _max_val=val
+                        _region=r
+                        max_state=s
+        if _region is None:
+            return 0,''
+        sub_env_set.add(_region)
+    return _max_val,max_state
+    _max_state=None
+    _max_value=0
+    for p in list(permutations(sub_env_set)):
+        s=get_sub_env_state(env.region_position,env,p)
+        if v['Q'].get(s) is None:
+            val=0
+        else:
+            val=max(v['Q'][s].values())
+        if val>_max_val:
+            _max_value=val
+            _max_state=s
+
+    print "max: ", _max_value, _max_state
+    print len(p)
+    return _max_val,_max_state
+
+
 def get_candidate_region(v,env,sub_env,explore,completion_node,num_step):
     _max_val=None
     _region=None
@@ -203,7 +252,11 @@ def get_candidate_region(v,env,sub_env,explore,completion_node,num_step):
                 val=randint(0,100)
             #print get_var(v,s),'2'
         else:
-            val=v['Qe'][s]
+            if v['Q'].get(s) is None:
+                val=0
+            else:
+                val=max(v['Q'][s].values())
+            #val=v['Q'][s]
         if _max_val is None:
             _max_val=val
             _region=r

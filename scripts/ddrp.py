@@ -4,7 +4,7 @@ import utils
 import pickle
 
 class DDRP:
-    def __init__(self,environment):
+    def __init__(self,environment,ENV_TYPE):
         self.values={}
         self.values['Q']={}
         self.values['N']={}
@@ -12,8 +12,12 @@ class DDRP:
         self.values['Qe']={}
         self.values['Ne']={}
         self.values['M2']={}
-        self.discount=.98
-        self.max_sub_env_length=10
+        if ENV_TYPE=='normal':
+            self.discount=.98
+            self.max_sub_env_length=5
+        elif ENV_TYPE=='tiny':
+            self.discount=.98
+            self.max_sub_env_length=4
         self.current_environment=environment.getCopy()
         self.completed_node_tree=utils.node(None,self.current_environment.region_position)
         self.completed_node_tree.explore(self.current_environment)
@@ -50,11 +54,25 @@ class DDRP:
         utils.task_value_update(self.values,s,t,reward)
         return reward,macro_task
 
-    def _sub_environment_search(self,partial_sub_env,completion_node):
+    # def _get_set_stateV(self,region_set):
+    #     hash_set=Set()
+
+
+    # def _sub_environment_search(self,partial_sub_env,completion_node):
+    #     region_small_set=Set()
+    #     while len(region_small_set)<=self.max_sub_env_length:
+    #         for region in region_finite_set:
+    #             if V.get(state(|)) is None:
+    #                 V=
+    #             region_small_set=region_small_set|region
+
+    #     return init_sub_environment(region_small_set)
+
+    def _sub_environment_search(self,partial_sub_env,completion_node,explore):
         if len(partial_sub_env)>=self.max_sub_env_length:
             completion_node.check_and_complete_node()
             return partial_sub_env
-        r = utils.get_candidate_region(self.values,self.temp_env,partial_sub_env,True,completion_node,self.num_iterations)
+        r = utils.get_candidate_region(self.values,self.temp_env,partial_sub_env,explore,completion_node,self.num_iterations)
         if r is None:
             print "Searched entire tree, size: ", self.completed_node_tree.getSize(),self.completed_node_tree.printValues()
             self.completed_node_tree=utils.node(None,self.current_environment.region_position)
@@ -62,11 +80,16 @@ class DDRP:
             return self._sub_environment_search((),self.completed_node_tree)
 
         next_node=completion_node.get_next_and_explore(r,self.temp_env)
-        return self._sub_environment_search(partial_sub_env+(r,),next_node)
+        return self._sub_environment_search(partial_sub_env+(r,),next_node,explore)
+
+    def first_step(self):
+        self._reset_temp_env()
+        v,s = utils.sub_mod_search(self.values,self.current_environment)
+        return v
 
     def step(self):
         self._reset_temp_env()
-        sub_env = self._sub_environment_search((),self.completed_node_tree)
+        sub_env = self._sub_environment_search((),self.completed_node_tree,True)
         s=utils.get_sub_env_state(self.temp_env.region_position,self.temp_env,sub_env)
         step_reward,macro_task = self._task_search(sub_env,[])
         if step_reward > self.max_reward:
@@ -88,7 +111,7 @@ class DDRP:
         # print episode_reward
         # print info
         # print sub_env,', s: ', utils.get_sub_env_state(self.temp_env.region_position,self.temp_env,sub_env) , ', r: ', episode_reward
-        return episode_reward 
+        return episode_reward ,val
 
     def save(self):
         utils.save_data('saved_values',self.values)

@@ -46,9 +46,13 @@ class Region():
         return closest_obj,True
 
 class ddrpOptionsEnv():
-    def __init__(self,num_obj):
+    def __init__(self,num_obj,env_type):
+        self.env_type=env_type
         self.summary=''
-        self.size=100
+        if env_type=='normal':
+            self.size=100
+        elif env_type=='tiny':
+            self.size=50
         self.possible_actions=None
         self.region={}
         self.region_size=10
@@ -59,7 +63,7 @@ class ddrpOptionsEnv():
             else:
                 self.objectives[i]=Objective(str(i),0)
             # self.objectives[i]=Objective(str(i),i/float(num_obj))
-        self.reg_len=int(self.size/self.region_size)
+        self.reg_len=self.region_size#int(self.size/self.region_size)
         self.action_space = spaces.Discrete((int(self.size/self.region_size))**2*len(self.objectives))
         self.observation_space = spaces.Box(low=0, high=11, shape=(int(self.size/self.region_size),int(self.size/self.region_size),2))
         self.action_meaning={}
@@ -69,8 +73,12 @@ class ddrpOptionsEnv():
         self.viewer = None
         self.state = None
         self.position=None
-        self.max_steps=100
-        self.timestep_limit=100#self.size**2
+        if env_type=='normal':
+            self.max_steps=100
+            self.timestep_limit=100#self.size**2
+        elif env_type=='tiny':
+            self.max_steps=50
+            self.timestep_limit=50#self.size**2
         self.steps=0
         self.r_sum=0
 
@@ -165,7 +173,7 @@ class ddrpOptionsEnv():
     #        return self.state, float(reward), done, self.summary
 
     def getCopy(self):
-        copy=ddrpOptionsEnv(len(self.objectives))
+        copy=ddrpOptionsEnv(len(self.objectives),self.env_type)
         copy.summary=''
         copy.done=False
         copy.state = np.zeros((int(copy.size/copy.region_size),int(copy.size/copy.region_size),len(self.objectives)+1),dtype=np.int8)
@@ -182,6 +190,7 @@ class ddrpOptionsEnv():
 
         #copy.position=(randInt(0,self.size-1),randInt(0,self.size-1))
         copy.position=(0,0)
+        copy.position=(self.size/2,self.size/2)
         copy.region_position=(copy.position[0]//copy.region_size,copy.position[1]//copy.region_size)
         copy.state[copy.region_position[0]][copy.region_position[1]][0]=1
 
@@ -208,7 +217,7 @@ class ddrpOptionsEnv():
                 self.region[(i,j)]=Region(self.objectives)
 
         for j in range(len(self.objectives)):
-            for i in range(100):
+            for i in range(self.size):
                 self.objectives[randInt(1,len(self.objectives))].objectives.append(randInt(0,self.size**2-1))
 
         for k,v in self.objectives.items():
@@ -220,7 +229,8 @@ class ddrpOptionsEnv():
             r.calculateState()
 
         #self.position=(randInt(0,self.size-1),randInt(0,self.size-1))
-        self.position=(0,0)
+        self.position=(self.size/2,self.size/2)
+        # self.position=(0,0)
         self.region_position=(self.position[0]//self.region_size,self.position[1]//self.region_size)
         self.state[self.region_position[0]][self.region_position[1]][0]=1
 
